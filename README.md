@@ -4,9 +4,34 @@
 
 [![GitHub](https://img.shields.io/github/license/Lex-au/Orpheus-FastAPI)](https://github.com/Lex-au/Orpheus-FastAPI/blob/main/LICENSE.txt)
 
-High-performance Text-to-Speech server with OpenAI-compatible API, 8 voices, emotion tags, and modern web UI. Optimized for RTX GPUs.
+High-performance Text-to-Speech server with OpenAI-compatible API, multilingual support with 24 voices, emotion tags, and modern web UI. Optimized for RTX GPUs.
 
 ## Changelog
+
+**v1.3.0** (2025-04-18)
+- 🌐 Added comprehensive multilingual support with 16 new voice actors across 7 languages
+- 🗣️ New voice actors include:
+  - French: pierre, amelie, marie
+  - German: jana, thomas, max
+  - Korean: 유나, 준서
+  - Hindi: ऋतिका
+  - Mandarin: 长乐, 白芷
+  - Spanish: javi, sergio, maria
+  - Italian: pietro, giulia, carlo
+- 🔄 Enhanced UI with dynamic language selection and voice filtering
+- 🚀 Released language-specific optimized models:
+  - [Italian & Spanish Model](https://huggingface.co/lex-au/Orpheus-3b-Italian_Spanish-FT-Q8_0.gguf)
+  - [Korean Model](https://huggingface.co/lex-au/Orpheus-3b-Korean-FT-Q8_0.gguf)
+  - [French Model](https://huggingface.co/lex-au/Orpheus-3b-French-FT-Q8_0.gguf)
+  - [Hindi Model](https://huggingface.co/lex-au/Orpheus-3b-Hindi-FT-Q8_0.gguf)
+  - [Mandarin Model](https://huggingface.co/lex-au/Orpheus-3b-Chinese-FT-Q8_0.gguf)
+  - [German Model](https://huggingface.co/lex-au/Orpheus-3b-German-FT-Q8_0.gguf)
+- 🐳 Docker Compose users: To use a language-specific model, edit the `.env` file before installation and change `ORPHEUS_MODEL_NAME` to match the desired model repo ID (e.g., `Orpheus-3b-French-FT-Q8_0.gguf`)
+
+**v1.2.0** (2025-04-12)
+- ❤️ Added optional Docker Compose support with GPU-enabled `llama.cpp` server and Orpheus-FastAPI integration  
+- 🐳 Docker implementation contributed by [@richardr1126](https://github.com/richardr1126) – huge thanks for the clean setup and orchestration work!  
+- 🧱 Native install path remains unchanged for non-Docker users
 
 **v1.1.0** (2025-03-23)
 - ✨ Added long-form audio support with sentence-based batching and crossfade stitching
@@ -44,7 +69,7 @@ Listen to sample outputs with different voices and emotions:
 - **OpenAI API Compatible**: Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint
 - **Modern Web Interface**: Clean, responsive UI with waveform visualization
 - **High Performance**: Optimized for RTX GPUs with parallel processing
-- **Multiple Voices**: 8 different voice options with different characteristics
+- **Multilingual Support**: 24 different voices across 8 languages (English, French, German, Korean, Hindi, Mandarin, Spanish, Italian)
 - **Emotion Tags**: Support for laughter, sighs, and other emotional expressions
 - **Unlimited Audio Length**: Generate audio of any length through intelligent batching
 - **Smooth Transitions**: Crossfaded audio segments for seamless listening experience
@@ -57,6 +82,8 @@ Listen to sample outputs with different voices and emotions:
 ```
 Orpheus-FastAPI/
 ├── app.py                # FastAPI server and endpoints
+├── docker-compose.yml    # Docker compose configuration
+├── Dockerfile.gpu        # GPU-enabled Docker image
 ├── requirements.txt      # Dependencies
 ├── static/               # Static assets (favicon, etc.)
 ├── outputs/              # Generated audio files
@@ -74,9 +101,31 @@ Orpheus-FastAPI/
 
 - Python 3.8-3.11 (Python 3.12 is not supported due to removal of pkgutil.ImpImporter)
 - CUDA-compatible GPU (recommended: RTX series for best performance)
-- Separate LLM inference server running the Orpheus model (e.g., LM Studio or llama.cpp server)
+- Using docker compose or separate LLM inference server running the Orpheus model (e.g., LM Studio or llama.cpp server)
 
-### Installation
+### 🐳 Docker compose
+
+The docker compose file orchestrates the Orpheus-FastAPI for audio and a llama.cpp inference server for the base model token generation. The GGUF model is downloaded with the model-init service.
+
+```bash
+cp .env.example .env # Create your .env file from the example
+copy .env.example .env # For Windows CMD
+```
+
+For multilingual models, edit the `.env` file and change the model name:
+```
+# Change this line in .env to use a language-specific model
+ORPHEUS_MODEL_NAME=Orpheus-3b-French-FT-Q8_0.gguf  # Example for French
+```
+
+Then start the services:
+```bash
+docker compose up --build
+```
+
+The system will automatically download the specified model from Hugging Face before starting the service.
+
+### FastAPI Service Native Installation
 
 1. Clone the repository:
 ```bash
@@ -176,6 +225,7 @@ curl -X POST http://localhost:5005/speak \
 
 ### Available Voices
 
+#### English
 - `tara`: Female, conversational, clear
 - `leah`: Female, warm, gentle
 - `jess`: Female, energetic, youthful
@@ -184,6 +234,37 @@ curl -X POST http://localhost:5005/speak \
 - `mia`: Female, professional, articulate
 - `zac`: Male, enthusiastic, dynamic
 - `zoe`: Female, calm, soothing
+
+#### French
+- `pierre`: Male, sophisticated
+- `amelie`: Female, elegant
+- `marie`: Female, spirited
+
+#### German
+- `jana`: Female, clear
+- `thomas`: Male, authoritative
+- `max`: Male, energetic
+
+#### Korean
+- `유나`: Female, melodic
+- `준서`: Male, confident
+
+#### Hindi
+- `ऋतिका`: Female, expressive
+
+#### Mandarin
+- `长乐`: Female, gentle
+- `白芷`: Female, clear
+
+#### Spanish
+- `javi`: Male, warm
+- `sergio`: Male, professional
+- `maria`: Female, friendly
+
+#### Italian
+- `pietro`: Male, passionate
+- `giulia`: Female, expressive
+- `carlo`: Male, refined
 
 ### Emotion Tags
 
@@ -273,7 +354,7 @@ You can easily integrate this TTS solution with [OpenWebUI](https://github.com/o
 
 ### External Inference Server
 
-This application requires a separate LLM inference server running the Orpheus model. You can use:
+This application requires a separate LLM inference server running the Orpheus model. For easy setup, use Docker Compose, which automatically handles this for you. Alternatively, you can use:
 
 - [GPUStack](https://github.com/gpustack/gpustack) - GPU optimised LLM inference server (My pick) - supports LAN/WAN tensor split parallelisation
 - [LM Studio](https://lmstudio.ai/) - Load the GGUF model and start the local server
@@ -293,9 +374,9 @@ The inference server should be configured to expose an API endpoint that this Fa
 
 ### Environment Variables
 
-You can configure the system using environment variables or a `.env` file:
+Configure in docker compose, if using docker. Not using docker; create a `.env` file:
 
-- `ORPHEUS_API_URL`: URL of the LLM inference API (tts_engine/inference.py)
+- `ORPHEUS_API_URL`: URL of the LLM inference API (default in Docker: http://llama-cpp-server:5006/v1/completions)
 - `ORPHEUS_API_TIMEOUT`: Timeout in seconds for API requests (default: 120)
 - `ORPHEUS_API_KEY`: API key for authentication with the OpenAI-compatible API (optional)
 - `ORPHEUS_MAX_TOKENS`: Maximum tokens to generate (default: 8192)
@@ -304,6 +385,7 @@ You can configure the system using environment variables or a `.env` file:
 - `ORPHEUS_SAMPLE_RATE`: Audio sample rate in Hz (default: 24000)
 - `ORPHEUS_PORT`: Web server port (default: 5005)
 - `ORPHEUS_HOST`: Web server host (default: 0.0.0.0)
+- `ORPHEUS_MODEL_NAME`: Model name for inference server
 
 The system now supports loading environment variables from a `.env` file in the project root, making it easier to configure without modifying system-wide environment settings. See `.env.example` for a template.
 

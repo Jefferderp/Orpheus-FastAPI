@@ -144,9 +144,42 @@ if not IS_RELOADER:
 # Parallel processing settings
 NUM_WORKERS = 4 if HIGH_END_GPU else 2
 
-# Available voices based on the Orpheus-TTS repository
-AVAILABLE_VOICES = ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"]
+# Define voices by language
+ENGLISH_VOICES = ["tara", "leah", "jess", "leo", "dan", "mia", "zac", "zoe"]
+FRENCH_VOICES = ["pierre", "amelie", "marie"]
+GERMAN_VOICES = ["jana", "thomas", "max"]
+KOREAN_VOICES = ["유나", "준서"]
+HINDI_VOICES = ["ऋतिका"]
+MANDARIN_VOICES = ["长乐", "白芷"]
+SPANISH_VOICES = ["javi", "sergio", "maria"]
+ITALIAN_VOICES = ["pietro", "giulia", "carlo"]
+
+# Combined list for API compatibility
+AVAILABLE_VOICES = (
+    ENGLISH_VOICES + 
+    FRENCH_VOICES + 
+    GERMAN_VOICES + 
+    KOREAN_VOICES + 
+    HINDI_VOICES + 
+    MANDARIN_VOICES + 
+    SPANISH_VOICES + 
+    ITALIAN_VOICES
+)
 DEFAULT_VOICE = "tara"  # Best voice according to documentation
+
+# Map voices to languages for the UI
+VOICE_TO_LANGUAGE = {}
+VOICE_TO_LANGUAGE.update({voice: "english" for voice in ENGLISH_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "french" for voice in FRENCH_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "german" for voice in GERMAN_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "korean" for voice in KOREAN_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "hindi" for voice in HINDI_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "mandarin" for voice in MANDARIN_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "spanish" for voice in SPANISH_VOICES})
+VOICE_TO_LANGUAGE.update({voice: "italian" for voice in ITALIAN_VOICES})
+
+# Languages list for the UI
+AVAILABLE_LANGUAGES = ["english", "french", "german", "korean", "hindi", "mandarin", "spanish", "italian"]
 
 # Import the unified token handling from speechpipe
 from .speechpipe import turn_token_into_id, CUSTOM_TOKEN_PREFIX
@@ -498,7 +531,7 @@ def tokens_decoder_sync(syn_token_gen, output_file=None):
     # Optimized I/O approach for all systems
     # This approach is simpler and more reliable than separate code paths
     write_buffer = bytearray()
-    buffer_max_size = 1024 * 1024  # 1MB max buffer size (adjustable)
+    buffer_max_size = 1024 * 1024 * 4   # 4MB max buffer size (adjustable)
     
     # Keep track of the last time we checked for completion
     last_check_time = time.time()
@@ -604,6 +637,32 @@ import re
 import numpy as np
 from io import BytesIO
 import wave
+
+async def sync_to_async_gen(sync_gen):
+    for item in sync_gen:
+        yield item
+
+async def stream_speech_from_api(
+    prompt: str,
+    voice: str = DEFAULT_VOICE,
+    temperature: float = TEMPERATURE,
+    top_p: float = TOP_P,
+    max_tokens: int = MAX_TOKENS,
+    repetition_penalty: float = REPETITION_PENALTY,
+    output_format: str = "int16"
+):
+    """Async generator to stream speech audio chunks from Orpheus TTS model."""
+    sync_gen = generate_tokens_from_api(
+        prompt=prompt,
+        voice=voice,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        repetition_penalty=repetition_penalty
+    )
+    token_gen = sync_to_async_gen(sync_gen)
+    async for chunk in tokens_decoder(token_gen):
+        yield chunk
 
 def split_text_into_sentences(text):
     """Split text into sentences with a more reliable approach."""
