@@ -1,99 +1,20 @@
-![Orpheus-FASTAPI Banner](https://lex-au.github.io/Orpheus-FastAPI/Banner.png)
 
-# Orpheus-FASTAPI
+This is a fork of https://github.com/Lex-au/Orpheus-FastAPI, with changes incorporated from multiple branches. The goal of this fork is to "cut the fat" as much as possible, leaving only a lean OpenAI-compatible API for fast inference.
 
-[![GitHub](https://img.shields.io/github/license/Lex-au/Orpheus-FastAPI)](https://github.com/Lex-au/Orpheus-FastAPI/blob/main/LICENSE.txt)
+---
 
-High-performance Text-to-Speech server with OpenAI-compatible API, multilingual support with 24 voices, emotion tags, and modern web UI. Optimized for RTX GPUs.
+# Orpheus-FASTAPI API
 
-## Changelog
-
-**v1.3.0** (2025-04-18)
-- 🌐 Added comprehensive multilingual support with 16 new voice actors across 7 languages
-- 🗣️ New voice actors include:
-  - French: pierre, amelie, marie
-  - German: jana, thomas, max
-  - Korean: 유나, 준서
-  - Hindi: ऋतिका
-  - Mandarin: 长乐, 白芷
-  - Spanish: javi, sergio, maria
-  - Italian: pietro, giulia, carlo
-- 🔄 Enhanced UI with dynamic language selection and voice filtering
-- 🚀 Released language-specific optimized models:
-  - [Italian & Spanish Model](https://huggingface.co/lex-au/Orpheus-3b-Italian_Spanish-FT-Q8_0.gguf)
-  - [Korean Model](https://huggingface.co/lex-au/Orpheus-3b-Korean-FT-Q8_0.gguf)
-  - [French Model](https://huggingface.co/lex-au/Orpheus-3b-French-FT-Q8_0.gguf)
-  - [Hindi Model](https://huggingface.co/lex-au/Orpheus-3b-Hindi-FT-Q8_0.gguf)
-  - [Mandarin Model](https://huggingface.co/lex-au/Orpheus-3b-Chinese-FT-Q8_0.gguf)
-  - [German Model](https://huggingface.co/lex-au/Orpheus-3b-German-FT-Q8_0.gguf)
-- 🐳 Docker Compose users: To use a language-specific model, edit the `.env` file before installation and change `ORPHEUS_MODEL_NAME` to match the desired model repo ID (e.g., `Orpheus-3b-French-FT-Q8_0.gguf`)
-
-**v1.2.0** (2025-04-12)
-- ❤️ Added optional Docker Compose support with GPU-enabled `llama.cpp` server and Orpheus-FastAPI integration  
-- 🐳 Docker implementation contributed by [@richardr1126](https://github.com/richardr1126) – huge thanks for the clean setup and orchestration work!  
-- 🧱 Native install path remains unchanged for non-Docker users
-
-**v1.1.0** (2025-03-23)
-- ✨ Added long-form audio support with sentence-based batching and crossfade stitching
-- 🔊 Improved short audio quality with optimized token buffer handling
-- 🔄 Enhanced environment variable support with .env file loading (configurable via UI)
-- 🖥️ Added automatic hardware detection and optimization for different GPUs
-- 📊 Implemented detailed performance reporting for audio generation
-- ⚠️ Note: Python 3.12 is not supported due to removal of pkgutil.ImpImporter
-
-[GitHub Repository](https://github.com/Lex-au/Orpheus-FastAPI)
-
-## Model Collection
-
-🚀 **NEW:** Try the quantized models for improved performance!
-- **Q2_K**: Ultra-fast inference with 2-bit quantization
-- **Q4_K_M**: Balanced quality/speed with 4-bit quantization (mixed)
-- **Q8_0**: Original high-quality 8-bit model
-
-[Browse the Orpheus-FASTAPI Model Collection on HuggingFace](https://huggingface.co/collections/lex-au/orpheus-fastapi-67e125ae03fc96dae0517707)
-
-## Voice Demos
-
-Listen to sample outputs with different voices and emotions:
-- [Default Test Sample](https://lex-au.github.io/Orpheus-FastAPI/DefaultTest.mp3) - Standard neutral tone
-- [Leah Happy Sample](https://lex-au.github.io/Orpheus-FastAPI/LeahHappy.mp3) - Cheerful, upbeat demo
-- [Tara Sad Sample](https://lex-au.github.io/Orpheus-FastAPI/TaraSad.mp3) - Emotional, melancholic demo
-- [Zac Contemplative Sample](https://lex-au.github.io/Orpheus-FastAPI/ZacContemplative.mp3) - Thoughtful, measured tone
-
-## User Interface
-
-![Web User Interface](https://lex-au.github.io/Orpheus-FastAPI/WebUI.png)
+High-performance Text-to-Speech API server with OpenAI-compatible endpoints, multilingual support with 24 voices, and emotion tags. Optimized for RTX GPUs.
 
 ## Features
 
 - **OpenAI API Compatible**: Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint
-- **Modern Web Interface**: Clean, responsive UI with waveform visualization
 - **High Performance**: Optimized for RTX GPUs with parallel processing
 - **Multilingual Support**: 24 different voices across 8 languages (English, French, German, Korean, Hindi, Mandarin, Spanish, Italian)
 - **Emotion Tags**: Support for laughter, sighs, and other emotional expressions
 - **Unlimited Audio Length**: Generate audio of any length through intelligent batching
 - **Smooth Transitions**: Crossfaded audio segments for seamless listening experience
-- **Web UI Configuration**: Configure all server settings directly from the interface
-- **Dynamic Environment Variables**: Update API endpoint, timeouts, and model parameters without editing files
-- **Server Restart**: Apply configuration changes with one-click server restart
-
-## Project Structure
-
-```
-Orpheus-FastAPI/
-├── app.py                # FastAPI server and endpoints
-├── docker-compose.yml    # Docker compose configuration
-├── Dockerfile.gpu        # GPU-enabled Docker image
-├── requirements.txt      # Dependencies
-├── static/               # Static assets (favicon, etc.)
-├── outputs/              # Generated audio files
-├── templates/            # HTML templates
-│   └── tts.html          # Web UI template
-└── tts_engine/           # Core TTS functionality
-    ├── __init__.py       # Package exports
-    ├── inference.py      # Token generation and API handling
-    └── speechpipe.py     # Audio conversion pipeline
-```
 
 ## Setup
 
@@ -103,33 +24,11 @@ Orpheus-FastAPI/
 - CUDA-compatible GPU (recommended: RTX series for best performance)
 - Using docker compose or separate LLM inference server running the Orpheus model (e.g., LM Studio or llama.cpp server)
 
-### 🐳 Docker compose
-
-The docker compose file orchestrates the Orpheus-FastAPI for audio and a llama.cpp inference server for the base model token generation. The GGUF model is downloaded with the model-init service.
-
-```bash
-cp .env.example .env # Create your .env file from the example
-copy .env.example .env # For Windows CMD
-```
-
-For multilingual models, edit the `.env` file and change the model name:
-```
-# Change this line in .env to use a language-specific model
-ORPHEUS_MODEL_NAME=Orpheus-3b-French-FT-Q8_0.gguf  # Example for French
-```
-
-Then start the services:
-```bash
-docker compose up --build
-```
-
-The system will automatically download the specified model from Hugging Face before starting the service.
-
 ### FastAPI Service Native Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Lex-au/Orpheus-FastAPI.git
+git clone https://github.com/Jefferderp/Orpheus-FastAPI.git
 cd Orpheus-FastAPI
 ```
 
@@ -138,10 +37,6 @@ cd Orpheus-FastAPI
 # Using venv (Python's built-in virtual environment)
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Or using conda
-conda create -n orpheus-tts python=3.10
-conda activate orpheus-tts
 ```
 
 3. Install PyTorch with CUDA support:
@@ -152,12 +47,6 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 4. Install other dependencies:
 ```bash
 pip3 install -r requirements.txt
-```
-
-5. Set up the required directories:
-```bash
-# Create directories for outputs and static files
-mkdir -p outputs static
 ```
 
 ### Starting the Server
@@ -172,55 +61,34 @@ Or with specific host/port:
 uvicorn app:app --host 0.0.0.0 --port 5005 --reload
 ```
 
-![Terminal Output](https://lex-au.github.io/Orpheus-FastAPI/terminal.png)
+### Streaming Endpoint
 
-Access:
-- Web interface: http://localhost:5005/ (or http://127.0.0.1:5005/)
-- API documentation: http://localhost:5005/docs (or http://127.0.0.1:5005/docs)
-
-![API Documentation](https://lex-au.github.io/Orpheus-FastAPI/docs.png)
-
-## API Usage
-
-### OpenAI-Compatible Endpoint
-
-The server provides an OpenAI-compatible API endpoint at `/v1/audio/speech`:
+The server also provides a streaming endpoint at `/v1/audio/speech/stream` for real-time audio generation:
 
 ```bash
-curl http://localhost:5005/v1/audio/speech \
+curl http://localhost:5005/v1/audio/speech/stream \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your_api_key_here" \
   -d '{
-    "model": "orpheus",
-    "input": "Hello world! This is a test of the Orpheus TTS system.",
+    "input": "This is a streaming test of the Orpheus TTS system.",
     "voice": "tara",
-    "response_format": "wav",
-    "speed": 1.0
+    "response_format": "wav"
   }' \
-  --output speech.wav
+  --output streaming_speech.wav
 ```
 
-### Parameters
+### Additional Streaming Endpoint
 
-- `input` (required): The text to convert to speech
-- `model` (optional): The model to use (default: "orpheus")
-- `voice` (optional): Which voice to use (default: "tara")
-- `response_format` (optional): Output format (currently only "wav" is supported)
-- `speed` (optional): Speed factor (0.5 to 1.5, default: 1.0)
-
-### Legacy API
-
-Additionally, a simpler `/speak` endpoint is available:
+An additional streaming endpoint is available at `/api/tts/stream`:
 
 ```bash
-curl -X POST http://localhost:5005/speak \
+curl -X POST http://localhost:5005/api/tts/stream \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_api_key_here" \
   -d '{
-    "text": "Hello world! This is a test.",
+    "text": "This is another streaming test.",
     "voice": "tara"
   }' \
-  -o output.wav
+  --output streaming_speech2.wav
 ```
 
 ### Available Voices
@@ -235,37 +103,6 @@ curl -X POST http://localhost:5005/speak \
 - `zac`: Male, enthusiastic, dynamic
 - `zoe`: Female, calm, soothing
 
-#### French
-- `pierre`: Male, sophisticated
-- `amelie`: Female, elegant
-- `marie`: Female, spirited
-
-#### German
-- `jana`: Female, clear
-- `thomas`: Male, authoritative
-- `max`: Male, energetic
-
-#### Korean
-- `유나`: Female, melodic
-- `준서`: Male, confident
-
-#### Hindi
-- `ऋतिका`: Female, expressive
-
-#### Mandarin
-- `长乐`: Female, gentle
-- `白芷`: Female, clear
-
-#### Spanish
-- `javi`: Male, warm
-- `sergio`: Male, professional
-- `maria`: Female, friendly
-
-#### Italian
-- `pietro`: Male, passionate
-- `giulia`: Female, expressive
-- `carlo`: Male, refined
-
 ### Emotion Tags
 
 You can insert emotion tags into your text to add expressiveness:
@@ -278,8 +115,6 @@ You can insert emotion tags into your text to add expressiveness:
 - `<groan>`: Add a groan
 - `<yawn>`: Add a yawning sound
 - `<gasp>`: Add a gasping sound
-
-Example: `"Well, that's interesting <laugh> I hadn't thought of that before."`
 
 ## Technical Details
 
@@ -361,15 +196,6 @@ This application requires a separate LLM inference server running the Orpheus mo
 - [llama.cpp server](https://github.com/ggerganov/llama.cpp) - Run with the appropriate model parameters
 - Any compatible OpenAI API-compatible server
 
-**Quantized Model Options:**
-- **lex-au/Orpheus-3b-FT-Q2_K.gguf**: Fastest inference (~50% faster tokens/sec than Q8_0)
-- **lex-au/Orpheus-3b-FT-Q4_K_M.gguf**: Balanced quality/speed 
-- **lex-au/Orpheus-3b-FT-Q8_0.gguf**: Original high-quality model
-
-Choose based on your hardware and needs. Lower bit models (Q2_K, Q4_K_M) provide ~2x realtime performance on high-end GPUs.
-
-[Browse all models in the collection](https://huggingface.co/collections/lex-au/orpheus-fastapi-67e125ae03fc96dae0517707)
-
 The inference server should be configured to expose an API endpoint that this FastAPI application will connect to.
 
 ### Environment Variables
@@ -389,8 +215,6 @@ Configure in docker compose, if using docker. Not using docker; create a `.env` 
 
 The system now supports loading environment variables from a `.env` file in the project root, making it easier to configure without modifying system-wide environment settings. See `.env.example` for a template.
 
-![Server Configuration UI](https://lex-au.github.io/Orpheus-FastAPI/ServerConfig.png)
-
 Note: Repetition penalty is hardcoded to 1.1 and cannot be changed through environment variables as this is the only value that produces stable, high-quality output.
 
 Make sure the `ORPHEUS_API_URL` points to your running inference server.
@@ -399,13 +223,13 @@ Make sure the `ORPHEUS_API_URL` points to your running inference server.
 
 ### Project Components
 
-- **app.py**: FastAPI server that handles HTTP requests and serves the web UI
+- **app.py**: FastAPI server that handles HTTP requests and API endpoints
 - **tts_engine/inference.py**: Handles token generation and API communication 
 - **tts_engine/speechpipe.py**: Converts token sequences to audio using the SNAC model
 
 ### Adding New Voices
 
-To add new voices, update the `AVAILABLE_VOICES` list in `tts_engine/inference.py` and add corresponding descriptions in the HTML template.
+To add new voices, update the `AVAILABLE_VOICES` list in `tts_engine/inference.py`.
 
 ## Using with llama.cpp
 
@@ -424,7 +248,7 @@ Important parameters:
 - `--rope-scaling=linear`: Required for optimal positional encoding with the Orpheus model
 
 For extended audio generation (books, long narrations), you may want to increase your token limits:
-1. Set ORPHEUS_MAX_TOKENS to 32768 or higher in your .env file (or via the Web UI)
+1. Set ORPHEUS_MAX_TOKENS to 32768 or higher in your .env file
 2. Increase ORPHEUS_API_TIMEOUT to 1800 for longer processing times
 3. Use the same values in your llama.cpp parameters (if you're using llama.cpp)
 
