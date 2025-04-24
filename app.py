@@ -190,7 +190,7 @@ async def create_speech_api(request: SpeechRequest, authorized: bool = Depends(v
         raise HTTPException(status_code=400, detail="Missing input text")
     
     # Generate unique filename
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = f"outputs/{timestamp}.wav"
     
     # Check if we should use batched generation
