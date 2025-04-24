@@ -478,7 +478,6 @@ if __name__ == "__main__":
         port = 5005
     
     print(f"🔥 Starting Orpheus-FASTAPI API Server on {host}:{port}")
-    print(f"📖 API docs available at http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs")
     
     # Read current API_URL for user information
     api_url = os.environ.get("ORPHEUS_API_URL")

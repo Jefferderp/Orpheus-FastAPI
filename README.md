@@ -1,5 +1,6 @@
 
-This is a fork of https://github.com/Lex-au/Orpheus-FastAPI, with changes incorporated from multiple branches. The goal of this fork is to "cut the fat" as much as possible, leaving only a lean OpenAI-compatible API for fast inference.
+- This is a fork of https://github.com/Lex-au/Orpheus-FastAPI, with changes incorporated from multiple forks.
+- The purpose of this fork is to "cut the fat" as much as possible, leaving only a lean OpenAI-compatible API for fast inference. No GUI, no Docker, no leftover output files.
 
 ---
 
@@ -44,7 +45,15 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
-4. Install other dependencies:
+4. Install OS dependencies:
+```bash
+# Ubuntu/Debian:
+apt install python3-dev -y
+# Or for a specific Python version (e.g. 3.11):
+apt install python3.11-dev -y
+```
+
+5. Install Python dependencies:
 ```bash
 pip3 install -r requirements.txt
 ```
