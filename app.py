@@ -364,7 +364,7 @@ async def stream_speech(
         nonlocal chunk_count, total_bytes
         
         # Pre-allocate buffers for better performance
-        buffer_size = 4096  # Lower for quicker buffer turnovers (4KB)
+        buffer_size = 8192  # Lower for quicker buffer turnovers (4KB)
         audio_buffer = bytearray(buffer_size)
         buffer_position = 0
         
