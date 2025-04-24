@@ -123,8 +123,11 @@ except (ValueError, TypeError):
     print("WARNING: Invalid ORPHEUS_TOP_P value, using 0.9 as fallback")
     TOP_P = 0.9
 
-# Repetition penalty is hardcoded to 1.1 which is the only stable value for quality output
-REPETITION_PENALTY = 1.1
+try:
+    REPETITION_PENALTY = float(os.environ.get("ORPHEUS_REPETITION_PENALTY", "1.1"))
+except (ValueError, TypeError):
+    print("WARNING: Invalid ORPHEUS_REPETITION_PENALTY value, using 1.1 as fallback")
+    REPETITION_PENALTY = 1.1
 
 try:
     SAMPLE_RATE = int(os.environ.get("ORPHEUS_SAMPLE_RATE", "24000"))
