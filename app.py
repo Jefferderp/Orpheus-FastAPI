@@ -486,5 +486,4 @@ if __name__ == "__main__":
     else:
         print(f"🔗 Using LLM inference server at: {api_url}")
         
-    # Start with reload enabled to allow automatic restart when files change
-    uvicorn.run("app:app", host=host, port=port, reload=True, reload_dirs=["."], reload_includes=["*.py"])
+    uvicorn.run("app:app", host=host, port=port)
