@@ -45,9 +45,16 @@ if not IS_RELOADER:
     print(f"Using device: {snac_device}")
 model = model.to(snac_device)
 
-# Disable torch.compile as it requires Triton which isn't installed
-# We'll use regular PyTorch optimization techniques instead
-if not IS_RELOADER:
+# Attempt to compile the model if supported for faster inference
+if TORCH_COMPILE_AVAILABLE:
+    try:
+        model = torch.compile(model)
+        if not IS_RELOADER:
+            print("Model compiled with torch.compile for faster inference")
+    except Exception as e:
+        if not IS_RELOADER:
+            print(f"torch.compile failed, continuing without compile: {e}")
+elif not IS_RELOADER:
     print("Using standard PyTorch optimizations (torch.compile disabled)")
 
 # Prepare CUDA streams for parallel processing if available
@@ -69,37 +76,16 @@ def convert_to_audio(multiframe, count):
     num_frames = len(multiframe) // 7
     frame = multiframe[:num_frames*7]
     
-    # Pre-allocate tensors instead of incrementally building them
-    codes_0 = torch.zeros(num_frames, dtype=torch.int32, device=snac_device)
-    codes_1 = torch.zeros(num_frames * 2, dtype=torch.int32, device=snac_device)
-    codes_2 = torch.zeros(num_frames * 4, dtype=torch.int32, device=snac_device)
-    
-    # Use vectorized operations where possible
+    # Vectorized extraction of per-frame codes
     frame_tensor = torch.tensor(frame, dtype=torch.int32, device=snac_device)
-    
-    # Direct indexing is much faster than concatenation in a loop
-    for j in range(num_frames):
-        idx = j * 7
-        
-        # Code 0 - single value per frame
-        codes_0[j] = frame_tensor[idx]
-        
-        # Code 1 - two values per frame
-        codes_1[j*2] = frame_tensor[idx+1]
-        codes_1[j*2+1] = frame_tensor[idx+4]
-        
-        # Code 2 - four values per frame
-        codes_2[j*4] = frame_tensor[idx+2]
-        codes_2[j*4+1] = frame_tensor[idx+3]
-        codes_2[j*4+2] = frame_tensor[idx+5]
-        codes_2[j*4+3] = frame_tensor[idx+6]
-    
-    # Reshape codes into expected format
-    codes = [
-        codes_0.unsqueeze(0), 
-        codes_1.unsqueeze(0), 
-        codes_2.unsqueeze(0)
-    ]
+    codes_matrix = frame_tensor.view(num_frames, 7)
+    # Code 0: first value of each frame
+    codes_0 = codes_matrix[:, 0]
+    # Code 1: second and fifth values
+    codes_1 = codes_matrix[:, [1, 4]].reshape(-1)
+    # Code 2: third, fourth, sixth, and seventh values
+    codes_2 = codes_matrix[:, [2, 3, 5, 6]].reshape(-1)
+    codes = [codes_0.unsqueeze(0), codes_1.unsqueeze(0), codes_2.unsqueeze(0)]
     
     # Check tokens are in valid range
     if (torch.any(codes[0] < 0) or torch.any(codes[0] > 4096) or 
@@ -152,38 +138,27 @@ def turn_token_into_id(token_string, index):
     Returns:
         int: Token ID if valid, None otherwise
     """
-    # Check cache first (significant speedup for repeated tokens)
-    cache_key = (token_string, index % 7)
+    prefix = CUSTOM_TOKEN_PREFIX
+    mod = index % 7
+    cache_key = (token_string, mod)
     if cache_key in token_id_cache:
         return token_id_cache[cache_key]
-        
-    # Early rejection for obvious non-matches
-    if CUSTOM_TOKEN_PREFIX not in token_string:
-        return None
-        
-    # Process token
-    token_string = token_string.strip()
-    last_token_start = token_string.rfind(CUSTOM_TOKEN_PREFIX)
-    
-    if last_token_start == -1:
-        return None
-    
-    last_token = token_string[last_token_start:]
-    
-    if not (last_token.startswith(CUSTOM_TOKEN_PREFIX) and last_token.endswith(">")):
-        return None
-        
-    try:
-        number_str = last_token[14:-1]
-        token_id = int(number_str) - 10 - ((index % 7) * 4096)
-        
-        # Cache the result if it's valid
+    # Must start with prefix and end with '>'
+    if not token_string.startswith(prefix) or not token_string.endswith(">"):
         if len(token_id_cache) < MAX_CACHE_SIZE:
-            token_id_cache[cache_key] = token_id
-            
-        return token_id
-    except (ValueError, IndexError):
+            token_id_cache[cache_key] = None
         return None
+    # Extract numeric part
+    num_str = token_string[len(prefix):-1]
+    if not num_str.isdigit():
+        if len(token_id_cache) < MAX_CACHE_SIZE:
+            token_id_cache[cache_key] = None
+        return None
+    num = int(num_str)
+    token_id = num - 10 - (mod * 4096)
+    if len(token_id_cache) < MAX_CACHE_SIZE:
+        token_id_cache[cache_key] = token_id
+    return token_id
 
 async def tokens_decoder(token_gen):
     """Optimized token decoder with early first-chunk processing for lower latency"""
@@ -193,8 +168,8 @@ async def tokens_decoder(token_gen):
     # Track if first chunk has been processed
     first_chunk_processed = False
     
-    # Use different thresholds for first chunk vs. subsequent chunks
-    min_frames_first = 7  # Just one chunk (7 tokens) for first audio - ultra-low latency
+    # Reduce time to first token: yield audio as soon as a single token is available
+    min_frames_first = 1   # Process after just 1 token for lowest latency
     min_frames_subsequent = 28  # Standard minimum (4 chunks of 7 tokens) after first audio
     ideal_frames = 49  # Ideal standard frame size (7×7 window) - unchanged
     process_every_n = 7  # Process every 7 tokens (standard for Orpheus model) - unchanged
@@ -226,12 +201,9 @@ async def tokens_decoder(token_gen):
             
             # Different processing logic based on whether first chunk has been processed
             if not first_chunk_processed:
-                # Process first chunk as soon as possible for minimal latency
+                # Process and yield audio as soon as a single token is available
                 if count >= min_frames_first:
                     buffer_to_proc = buffer[-min_frames_first:]
-                    
-                    # Process the first chunk of audio for immediate feedback
-                    print(f"Processing first audio chunk with {len(buffer_to_proc)} tokens for low latency")
                     audio_samples = convert_to_audio(buffer_to_proc, count)
                     if audio_samples is not None:
                         first_chunk_processed = True  # Mark first chunk as processed
@@ -239,51 +211,22 @@ async def tokens_decoder(token_gen):
             else:
                 # For subsequent chunks, use original processing with proper batching
                 if count % process_every_n == 0:
-                    # Use same prioritization logic as before
                     if len(buffer) >= ideal_frames:
                         buffer_to_proc = buffer[-ideal_frames:]
                     elif len(buffer) >= min_frames_subsequent:
                         buffer_to_proc = buffer[-min_frames_subsequent:]
                     else:
                         continue
-                    
-                    # Debug output to help diagnose issues
-                    if count % 28 == 0:
-                        print(f"Processing buffer with {len(buffer_to_proc)} tokens, total collected: {len(buffer)}")
-                    
-                    # Process the tokens
                     audio_samples = convert_to_audio(buffer_to_proc, count)
                     if audio_samples is not None:
                         yield audio_samples
     
-    # CRITICAL: End-of-generation handling - process all remaining frames
-    # Process remaining complete frames (ideal size)
-    if len(buffer) >= ideal_frames:
-        buffer_to_proc = buffer[-ideal_frames:]
+    # CRITICAL: End-of-generation handling - always flush any remaining tokens as audio
+    if len(buffer) > 0:
+        buffer_to_proc = buffer[:]
         audio_samples = convert_to_audio(buffer_to_proc, count)
         if audio_samples is not None:
             yield audio_samples
-            
-    # Process any additional complete frames (minimum size)
-    elif len(buffer) >= min_frames_subsequent:
-        buffer_to_proc = buffer[-min_frames_subsequent:]
-        audio_samples = convert_to_audio(buffer_to_proc, count)
-        if audio_samples is not None:
-            yield audio_samples
-            
-    # Final special case: even if we don't have minimum frames, try to process
-    # what we have by padding with silence tokens that won't affect the audio
-    elif len(buffer) >= process_every_n:
-        # Pad to minimum frame requirement with copies of the final token
-        # This is more continuous than using unrelated tokens from the beginning
-        last_token = buffer[-1]
-        padding_needed = min_frames_subsequent - len(buffer)
-        
-        # Create a padding array of copies of the last token
-        # This maintains continuity much better than circular buffering
-        padding = [last_token] * padding_needed
-        padded_buffer = buffer + padding
-        
         print(f"Processing final partial frame: {len(buffer)} tokens + {padding_needed} repeated-token padding")
         audio_samples = convert_to_audio(padded_buffer, count)
         if audio_samples is not None:
@@ -291,12 +234,11 @@ async def tokens_decoder(token_gen):
 # ------------------ Synchronous Tokens Decoder Wrapper ------------------ #
 def tokens_decoder_sync(syn_token_gen):
     """Optimized synchronous decoder with larger queue and parallel processing"""
-    # Use a larger queue for RTX 4090 to maximize GPU utilization
-    max_queue_size = 256 if snac_device == "cuda" else 8
-    audio_queue = queue.Queue(maxsize=max_queue_size)
-    
+    # Use unbounded SimpleQueue for lower overhead
+    audio_queue = queue.SimpleQueue()
+
     # Collect tokens in batches for higher throughput
-    batch_size = 128 if snac_device == "cuda" else 4
+    batch_size = 8 if snac_device == "cuda" else 4
     
     # Convert the synchronous token generator into an async generator with batching
     async def async_token_gen():
@@ -323,18 +265,12 @@ def tokens_decoder_sync(syn_token_gen):
                 if audio_chunk:  # Validate audio chunk before adding to queue
                     audio_queue.put(audio_chunk)
                     chunk_count += 1
-                    
-                    # Log performance stats periodically
-                    if chunk_count % 10 == 0:
-                        elapsed = time.time() - start_time
-                        print(f"Generated {chunk_count} chunks in {elapsed:.2f}s ({chunk_count/elapsed:.2f} chunks/sec)")
         except Exception as e:
             print(f"Error in audio producer: {e}")
             import traceback
             traceback.print_exc()
         finally:    
             # Signal completion
-            print("Audio producer completed - finalizing all chunks")
             audio_queue.put(None)  # Sentinel
 
     def run_async():
@@ -345,8 +281,8 @@ def tokens_decoder_sync(syn_token_gen):
     thread.daemon = True  # Allow the thread to be terminated when the main thread exits
     thread.start()
 
-    # Use larger buffer for final audio assembly
-    buffer_size = 5
+    # Use larger buffer for throughput
+    buffer_size = 20
     audio_buffer = []
     
     while True:
@@ -364,5 +300,3 @@ def tokens_decoder_sync(syn_token_gen):
     # Yield any remaining audio in the buffer
     for chunk in audio_buffer:
         yield chunk
-
-    thread.join()
