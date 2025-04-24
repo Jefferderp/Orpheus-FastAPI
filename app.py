@@ -14,6 +14,7 @@ import io
 import struct
 import json
 import numpy as np
+import glob
 
 # Function to ensure .env file exists
 def ensure_env_file_exists():
@@ -189,8 +190,8 @@ async def create_speech_api(request: SpeechRequest, authorized: bool = Depends(v
         raise HTTPException(status_code=400, detail="Missing input text")
     
     # Generate unique filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"outputs/{request.voice}_{timestamp}.wav"
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+    output_path = f"outputs/{timestamp}.wav"
     
     # Check if we should use batched generation
     use_batching = len(request.input) > 1000
@@ -433,6 +434,25 @@ async def stream_speech(
 
 if __name__ == "__main__":
     import uvicorn
+
+    # Delete existing WAV files in ./outputs/
+    output_dir = "outputs"
+    print(f"🧹 Clearing existing .wav files from '{output_dir}' directory...")
+    try:
+        
+        # Find all .wav files in the directory
+        wav_files = glob.glob(os.path.join(output_dir, '*.wav'))
+        
+        if not wav_files:
+            pass
+        else:
+            for f in wav_files:
+                try:
+                    os.remove(f)
+                except OSError as e:
+                    pass # Fail silently
+    except Exception:
+        pass # Fail silently
     
     # Check for required settings
     required_settings = ["ORPHEUS_HOST", "ORPHEUS_PORT"]
